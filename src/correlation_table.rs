@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(std::fmt::Debug, Serialize, Deserialize)]
+#[derive(std::fmt::Debug, Serialize, Deserialize, Clone)]
 pub struct CorrelationTable(Vec<Correlation>);
 
-#[derive(std::fmt::Debug, Serialize, Deserialize)]
+#[derive(std::fmt::Debug, Serialize, Deserialize, Clone)]
 pub struct Correlation {
     filepath: String,
-    prefix: String,
+    suffix: String,
 }
 
 impl CorrelationTable {
@@ -16,8 +16,8 @@ impl CorrelationTable {
     }
 
     // TODO: throw Error when duplicated Correlation appended.
-    pub fn append(&mut self, filepath: String, prefix: String) -> () {
-        let correlation = Correlation { filepath, prefix };
+    pub fn append(&mut self, filepath: String, suffix: String) -> () {
+        let correlation = Correlation { filepath, suffix };
         self.0.push(correlation);
     }
 
@@ -29,7 +29,7 @@ impl CorrelationTable {
 
         match correlation {
             None => None,
-            Some(correl) => Some(correl.prefix.clone()),
+            Some(correl) => Some(correl.suffix.clone()),
         }
     }
 }

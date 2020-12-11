@@ -1,8 +1,6 @@
 use cssparser::{ParseError, Parser, ParserInput, ToCss, Token};
 use std::fmt::Write;
 
-const PREFIX_SEPARATOR: &str = "-";
-
 pub struct CustomError {
     message: String,
 }
@@ -32,12 +30,12 @@ impl<'a> ParseState<'a> {
     }
 }
 
-pub fn compile<'a>(style: &'a str, prefix: &'a str) -> Result<String, ParseError<'a, CustomError>> {
+pub fn compile<'a>(style: &'a str, suffix: &'a str) -> Result<String, ParseError<'a, CustomError>> {
     let mut parser_input = ParserInput::new(&style);
     let mut parser = Parser::new(&mut parser_input);
     let mut output = String::new();
     let state = ParseState::new(&mut output);
-    match parse_segment(&mut parser, state, prefix) {
+    match parse_segment(&mut parser, state, suffix) {
         Ok(_) => Ok(output),
         Err(err) => Err(err),
     }
@@ -46,10 +44,10 @@ pub fn compile<'a>(style: &'a str, prefix: &'a str) -> Result<String, ParseError
 fn parse_segment<'a, 't: 'a, 'i: 't>(
     parser: &'a mut Parser<'i, 't>,
     mut state: ParseState<'a>,
-    prefix: &'a str,
+    suffix: &'a str,
 ) -> Result<(), ParseError<'i, CustomError>> {
     while !parser.is_exhausted() {
-        parse_block(parser, state.sub(), prefix).unwrap();
+        parse_block(parser, state.sub(), suffix).unwrap();
     }
     Ok(())
 }
@@ -57,30 +55,33 @@ fn parse_segment<'a, 't: 'a, 'i: 't>(
 fn parse_block<'a, 't: 'a, 'i: 't>(
     parser: &'a mut Parser<'i, 't>,
     mut state: ParseState<'a>,
-    prefix: &'a str,
+    suffix: &'a str,
 ) -> Result<(), ParseError<'i, CustomError>> {
-    parse_common_block(parser, state.sub(), prefix)
+    parse_common_block(parser, state.sub(), suffix)
 }
 
 fn parse_common_block<'a, 't: 'a, 'i: 't>(
     parser: &'a mut Parser<'i, 't>,
     mut state: ParseState<'a>,
-    prefix: &'a str,
+    suffix: &'a str,
 ) -> Result<(), ParseError<'i, CustomError>> {
     while !parser.is_exhausted() {
         let next = parser.next().unwrap().clone();
         // let next = parser.next_including_whitespace().unwrap().clone();
-        println!("Next {:?}", next);
+        // println!("Next {:?}", next);
         match next {
-            Token::Ident(ref _s) => write_token(&next, state.output),
+            Token::Ident(ref s) => {
+                println!("Parser IDENT {:?}", s);
+                write_token(&next, state.output)
+            }
             Token::Delim(c) => {
                 // TODO: deal with namespace by uuid here.
                 write_token(&next, state.output);
-                println!("Delimmmmm {:?}", c);
+                // println!("Delimmmmm {:?}", c);
                 if &c.to_string() == "." {
                     state
                         .output
-                        .write_str(&(prefix.to_owned() + PREFIX_SEPARATOR))
+                        .write_str(&format!("cssmod-{}-", suffix.to_owned(),))
                         .unwrap();
                 }
             }
@@ -96,28 +97,28 @@ fn parse_common_block<'a, 't: 'a, 'i: 't>(
             Token::Function(_) => {
                 write_token(&next, state.output);
                 parser
-                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), prefix))
+                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), suffix))
                     .unwrap();
                 state.output.write_str(")").unwrap();
             }
             Token::ParenthesisBlock => {
                 state.output.write_str("(").unwrap();
                 parser
-                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), prefix))
+                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), suffix))
                     .unwrap();
                 state.output.write_str(")").unwrap();
             }
             Token::SquareBracketBlock => {
                 state.output.write_str("[").unwrap();
                 parser
-                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), prefix))
+                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), suffix))
                     .unwrap();
                 state.output.write_str("]").unwrap();
             }
             Token::CurlyBracketBlock => {
                 state.output.write_str("{").unwrap();
                 parser
-                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), prefix))
+                    .parse_nested_block(|parser| parse_segment(parser, state.sub(), suffix))
                     .unwrap();
                 state.output.write_str("}").unwrap();
                 // state.output.write_str("\n}").unwrap();
@@ -147,7 +148,7 @@ mod tests {
     width: 100%;
 }"#;
         let output = parser::compile(style, "Hello");
-        println!("==========================");
-        println!("Test Output!!! {:?}", output);
+        // println!("==========================");
+        // <println!("Test Output!!! {:?}", output);
     }
 }
